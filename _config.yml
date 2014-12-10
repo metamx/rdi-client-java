@@ -1,0 +1,17 @@
+# Permalinks
+permalink:        pretty
+relative_permalinks: true
+
+# Setup
+title:            rdi-client-java
+tagline:          Hoppy has to make the lumber deal happen and solve the murder.
+url:              https://metamx.github.io/rdi-client-java/
+author:
+  name:           Metamarket
+  url:            https://twitter.com/metamarkets
+  email:          contact@metamarkets.com
+
+# Custom vars
+version:          0.0.1-SNAPSHOT
+github:
+  repo:           https://github.com/metamx/rdi-client-java
