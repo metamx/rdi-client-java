@@ -4,7 +4,7 @@ relative_permalinks: true
 
 # Setup
 title:            rdi-client-java
-tagline:          Hoppy has to make the lumber deal happen and solve the murder.
+tagline:          A client library for integrating with Metamarkets real-time ingestion API
 url:              https://metamx.github.io/rdi-client-java/
 author:
   name:           Metamarket

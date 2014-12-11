@@ -54,7 +54,7 @@ html {
 }
 @media (min-width: 38em) {
   html {
-    font-size: 20px;
+    font-size: 16px;
   }
 }
 
@@ -314,7 +314,8 @@ tbody tr:nth-child(odd) th {
   color: #505050;
 }
 .masthead-title small {
-  font-size: 75%;
+  /*font-size: 30px;*/
+  font-size: 80%;
   font-weight: 400;
   color: #c0c0c0;
   letter-spacing: 0;

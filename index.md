@@ -3,94 +3,56 @@ title: Home
 layout: default
 ---
 
-# Overview
+# Metamarkets' RdiClient for Java
+
+## Overview
 
 The RdiClient for Java is a client library for posting event streams to Metamarkets' real-time data ingestion (RDI) API, which receives and processes event data in real-time.  The client comes with functionality to handle connecting to the HTTPS endpoint, authentication, serialization & batching events, connection pooling, HTTP transport, and error handling (w/ exponential-backoff retries).
 
-# Usage
+The RdiClient for Java is currently in beta and the current version is 0.0.1. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.1/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
 
-## Getting Started
+## Getting Started with the Client Library
 
-To create the client, you'll need to pass an RdiClientConfig as shown in the example below.  Once your RdiClient is configured, use "send" to pass events to the client.  Passing events using "send" will post a new batch periodically when the events being buffered reach the max batch event count (flushCount) or the max batch size in bytes (flushBytes).  The method will return a future for every message sent before the POST actually finishes.  You should inspect the futures to determine whether or not the POST succeeded. The returned future may resolve into an exception if there are connection/network issues, or the client is unable to POST to the server (e.g. if your rate limit is exceeded or your credentials are incorrect).  In the event of an exception when POSTing a batch, all futures for the events in that batch will resolve into an exception.  As demonstrated in the example below, you can attach callbacks to the futures returned by "send".  Keep in mind that unless the you provide your own Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block (e.g. If you are using RabbitMQ and need to ack after every message is sent).  Calling "flush" will also force all pending events to be batched and POSTed.  
+The RdiClient artifacts are available on Metamarkets artifactory (see below for distribution information).  However, the library also comes with a built in testing tool that you can use to try out sending some data to the Metamarkets API right away from files that you pass to the tool.  Get started by downloading the tar file for the most recent distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.1/rdi-client-distribution-0.1-dist.tar.gz).
 
-For more information on the basic RdiClient API, please refer to the javadocs here. (TODO: ADD LINK)
-
-The The following is an example of creating the client and using the basic API for passing event records:
-
-{% highlight java %}
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.metamx.rdiclient.RdiClient;
-import com.metamx.rdiclient.RdiClientConfig;
-import com.metamx.rdiclient.RdiClients;
-import com.metamx.rdiclient.RdiResponse;
-
-import java.util.ArrayList;
-import java.util.List;
-
-public class Main
-{
-  public static void main(String[] args) throws Exception{
-    final String endpoint = "<PROVIDED_BY_MMX>";
-    final String username = "<PROVIDED_BY_MMX>";
-    final String password = "<PROVIDED_BY_MMX>";
-
-    final RdiClientConfig config = RdiClientConfig.builder()
-                                                  .username(username)
-                                                  .password(password)
-                                                  .rdiUrl(endpoint)
-                                                  .build();
-
-    final RdiClient<String> client = RdiClients.usingJacksonSerializer(config);
-
-    client.start();
-
-    List<String> messages = new ArrayList<>();
-    messages.add("foo");
-    messages.add("bar");
-    messages.add("baz");
-
-    for (String message : messages) {
-      // "send" method will return a future before POST actually finishes
-      final ListenableFuture<RdiResponse> send = client.send(message);
-
-      // Add a callback to inspect futures to determine whether or not the post succeeded.
-      // The returned future may resolve into an exception if there are connection/network issues,
-      // or if the client is unable to POST to the server (e.g. if your rate limit is exceeded or your
-      // credentials are incorrect).
-      Futures.addCallback(
-          send,
-          new FutureCallback<RdiResponse>()
-          {
-            @Override
-            public void onSuccess(RdiResponse result) {}
-
-            @Override
-            public void onFailure(Throwable t)
-            {
-              // Add your own logic for handling exceptions here.
-            }
-          }
-      );
-    }
-
-    client.flush();
-    client.close();
-  }
-
-}
+Once you've downloaded the tar file, unpack it in the directory from which you plan to run the program.  Once that's done, you should see the following directories:
+{% highlight bash %}
+$ ls
+bin
+conf
+lib
 {% endhighlight %}
+
+Next, you'll need to update the the RDI configuration file that can be found at "conf/rdi.properties".  This file contains the configuration parameters required for setting up and tuning the RdiClient.  Contact your Metamarkets representative to obtain your RDI URL, username, and password. It should look like this:
+{% highlight java %}
+rdi.url = https://rt-test.mmx.io/events/your-endpoint
+rdi.username = your-username
+rdi.password = your-password
+rdi.connection.count = 1
+{% endhighlight %}
+
+Once that's done, you're ready to start posting some data.  The testing utility allows you to post data from files that you specify at runtime.  The files should be uncompressed, plain text files containing newline separated json event records.  To kick off the process, run the following command from the directory where you unpacked the tar file, passing the names of your data files as space-delimited parameters:
+{% highlight bash %}
+$ bin/rdi-send-files.sh sample_data_1.txt sample_data_2.txt
+{% endhighlight %}
+
+When you're ready to start developing against the API, the Main method used in the testing utility will also serve as a good example to help you understand the basic API functionality. You can find the source code [here on Github](https://github.com/metamx/rdi-client-java/blob/master/core/src/main/java/com/metamx/rdiclient/example/FileInputMain.java).
+
+## The Basic API
+
+To create the client, you'll need to pass an RdiClientConfig as shown in testing utility example.  Once your RdiClient is configured, use "send" to pass events to the client.  Passing events using "send" will post a new batch periodically when the events being buffered reach the max batch event count (flushCount) or the max batch size in bytes (flushBytes).  The method will return a future for every message sent before the POST actually finishes.  You should inspect the futures to determine whether or not the POST succeeded. The returned future may resolve into an exception if there are connection/network issues, or if the client is unable to POST to the server (e.g. if your rate limit is exceeded or your credentials are incorrect).  In the event of an exception when POSTing a batch, all futures for the events in that batch will resolve into an exception.  As demonstrated in the testing utility example, you can attach callbacks to the futures returned by "send".  Keep in mind that unless the you provide your own Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block (e.g. If you are using RabbitMQ and need to ack after every message is sent).  Calling "flush" will also force all pending events to be batched and POSTed.
+
+For more information on the core RdiClient API, please refer to the javadocs [here](https://metamx.github.io/rdi-client-java/static/apidocs/0.1/).
 
 ## Data Format & Serialization
 
-Metamarkets API currently accepts JSON event data with UTF-8 encoding.  We have a jackson-based serialization library available ([link here](https://github.com/metamx/rad-tech-datatypes)) for generating the OpenRTB-based event records which may be used in conjunction with the RDI Client. 
+Metamarkets API currently accepts JSON event data with UTF-8 encoding.  Our jackson-based serialization library, [RadTech Datatypes](https://github.com/metamx/rad-tech-datatypes), is available for generating the OpenRTB-based event records which may be used in conjunction with the RDI Client. 
 
 For more information on the required data types, please contact your Metamarkets representative.  
 
 The client requires a "serializer" class to be passed for converting messages to byte arrays prior to posting.  There are two built in serializers available:
 
-- JacksonSerializer: Uses a Jackson ObjectMapper to serialize events to byte arrays.  This library comes with default methods for creating a client for posting [Metamarkets' standard data types](https://github.com/metamx/rad-tech-datatypes).  
+- JacksonSerializer: Uses a Jackson ObjectMapper to serialize events to byte arrays.  The library comes with a default method for creating a client for posting [Metamarkets' standard data types](https://github.com/metamx/rad-tech-datatypes).
 
 {% highlight java %}
 // For MmxAuctionSummary events:
@@ -105,7 +67,11 @@ final RdiClient<byte[]> client = RdiClients.makeDefault(config, new PassthroughS
 
 ## Compression
 
-The Metamarkets API currently only supports gzip compression.  You may enable compression by setting the "contentEncoding" configuration parameter to ".contentEncoding(RdiClientConfig.ContentEncoding.GZIP)".  Otherwise it will default to "NONE".  
+The Metamarkets API currently only supports gzip compression.  You may enable compression by setting the "contentEncoding" configuration parameter to "RdiClientConfig.ContentEncoding.GZIP" as shown below:
+{% highlight java %}
+client.contentEncoding(RdiClientConfig.ContentEncoding.GZIP)
+{% endhighlight %}  
+Otherwise it will default to "NONE".
 
 Because events will be compressed by the library, you should not compress them prior to calling the client.
 
@@ -131,56 +97,66 @@ If your data uploads fall behind, do not attempt to backfill all of the data by 
 
 We strongly recommend that customers run the client safely out of band of mission-critical systems (e.g. servers conducting auctions or bidding).  If the maximum batch size is reached and no connections to the server are available, the method will block until a connection is available.  It is best practice to use a message queue (e.g. Kafka or RabbitMQ) for buffering data prior to delivery to the Metamarkets API.  Log retention should be set to a window long enough to allow for retention of data in the event of issues posting data to RDI.  We typically recommend that customers keep the data for 5-7 days.
 
+## JARs
+
+RdiClient artifacts are hosted on the Metamarkets maven repository: https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/.
+If you set up your project to know about this repository, you can depend on one of the hosted versions.
+
+The current version is:
+
+{% highlight xml %}
+<dependency>
+  <groupId>com.metamx</groupId>
+  <artifactId>rdi-client-core</artifactId>
+  <version>0.1</version>
+</dependency>
+{% endhighlight %}
+
 # Kafka Implementation
 
 ## Overview
 Although the RDI client does not require a particular upstream message queue, we have provided an implementation for Kafka users. 
 
-The Kafka implementation assumes that you have already serialzed your event records to one of the formats required by Metamarkets RDI, so the connector will attempt to pass through the pre-serialzed byte arrays to the API.  Compression is disabled by default, but you can optionally enable it in the RdiClientConfig to save some network bandwidth at the expense of CPU.  Currently only GZIP is supported.
+The Kafka implementation assumes that you have already serialzed your event records to one of the formats required by Metamarkets RDI, so the connector will attempt to pass through the pre-serialzed byte arrays to the API.  As mentioned above, our jackson-based serialization library, [RadTech Datatypes](https://github.com/metamx/rad-tech-datatypes), is available for generating the OpenRTB-based event records which may be used in conjunction with the RDI Client.  Compression is disabled by default, but you can optionally enable it in the RdiClientConfig to save some network bandwidth at the expense of CPU.  Currently only GZIP is supported.
 
 Commits are done manually to support a "guaranteed delivery" approach.
 
-## Download
+## Downloading, Configuration & Usage
 
-*** TODO: Recommend that people download the jar from the java docs -> one for core and one for the kafka example.
+To get started, you can download the latest distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.1/rdi-client-distribution-0.1-dist.tar.gz).
 
-## Configuration & Usage
+Once you've downloaded the tar file, unpack it in the directory from which you plan to run the program.  Once that's done, you should see the following directories:
+{% highlight bash %}
+$ ls
+bin
+conf
+lib
+rdi-client-java-distribution-0.0.1-dist.tar.gz
+{% endhighlight %}
 
-You'll need to create two configuration files (kafka.properties & rdi.properties), which will be passed via the command line when you run the program.
+Next, you'll need to update the two configuration files in the "conf" directory.  
 
-Your rdi.properties file should include the following:
+The first, conf/rdi.properties, contains configuration parameters required by RdiClient and should include the following:
 {% highlight java %}
 rdi.url = https://rt-test.mmx.io/events/your-endpoint
 rdi.username = your-username
 rdi.password = your-password
+rdi.connection.count = 1
+
 rdi.kafka.topic = your-topic-name
-rdi.kafka.threads = consumer-threads # Optional - will default to using one less than the number of available processors
-rdi.connection.count = 1 # Optional - the default is shown here
+rdi.kafka.threads = 1
 {% endhighlight %}
 
-The Rdi Url, username, password and kafka topic name are required.  You may also customize additional RdiClient parameters via the properties file, but the Kafka implementation will otherwise use the defaults set by the RdiClientConfig.
+The Rdi Url, username, password and kafka topic name are required.  The connection count parameter is optional and will default to one. The kafka threads parameter is also optional and will default to using one less than the number of available processors.  You may also customize additional RdiClient parameters via the properties file, but the Kafka implementation will otherwise use the defaults set by the RdiClientConfig.
 
-Your kafka.properties config file should contain the following parameters:
+The second file is conf/kafka.properties, which should contain the following:
 {% highlight java %}
 group.id = your-group-id
 zookeeper.connect = your-zookeeper-endpoint
 zookeeper.session.timeout.ms = 30000
 {% endhighlight %}
 
-Once you have downloaded the .jar file, 
-
-
-## JARs
-
-RdiClient artifacts are hosted on the Metamarkets maven repository: https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/.
-If you set up your project to know about this repository, you can depend on one of the hosted versions.
-
-The current stable version is:
-
-{% highlight xml %}
-<dependency>
-  <groupId>com.metamx</groupId>
-  <artifactId>update!!</artifactId>
-  <version>update!!</version>
-</dependency>
+Once that's done, you're ready to go.  To kick off the process, run the following command from the directory where you unpacked the tar file:
+{% highlight bash %}
+$ bin/kafka-rdi-consumer.sh
 {% endhighlight %}
