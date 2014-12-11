@@ -9,7 +9,7 @@ layout: default
 
 The RdiClient for Java is a client library for posting event streams to Metamarkets' real-time data ingestion (RDI) API, which receives and processes event data in real-time.  The client comes with functionality to handle connecting to the HTTPS endpoint, authentication, serialization & batching events, connection pooling, HTTP transport, and error handling (w/ exponential-backoff retries).
 
-The RdiClient for Java is currently in beta and the current version is 0.0.1. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.1/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
+The RdiClient for Java is currently in beta and the current version is 0.1. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.1/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
 
 ## Getting Started with the Client Library
 
@@ -40,7 +40,7 @@ When you're ready to start developing against the API, the Main method used in t
 
 ## The Basic API
 
-To create the client, you'll need to pass an RdiClientConfig as shown in testing utility example.  Once your RdiClient is configured, use "send" to pass events to the client.  Passing events using "send" will post a new batch periodically when the events being buffered reach the max batch event count (flushCount) or the max batch size in bytes (flushBytes).  The method will return a future for every message sent before the POST actually finishes.  You should inspect the futures to determine whether or not the POST succeeded. The returned future may resolve into an exception if there are connection/network issues, or if the client is unable to POST to the server (e.g. if your rate limit is exceeded or your credentials are incorrect).  In the event of an exception when POSTing a batch, all futures for the events in that batch will resolve into an exception.  As demonstrated in the testing utility example, you can attach callbacks to the futures returned by "send".  Keep in mind that unless the you provide your own Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block (e.g. If you are using RabbitMQ and need to ack after every message is sent).  Calling "flush" will also force all pending events to be batched and POSTed.
+To create the client, you'll need to pass an RdiClientConfig as shown in testing utility example.  Once your RdiClient is configured, use "send" to pass events to the client.  Passing events using "send" will post a new batch periodically when the events being buffered reach the max batch event count (flushCount) or the max batch size in bytes (flushBytes).  The method will return a future for every message sent before the POST actually finishes.  You should inspect the futures to determine whether or not the POST succeeded. The returned future may resolve into an exception if there are connection/network issues, or if the client is unable to POST to the server (e.g. if your rate limit is exceeded or your credentials are incorrect).  In the event of an exception when POSTing a batch, all futures for the events in that batch will resolve into an exception.  As demonstrated in the testing utility example, you can attach callbacks to the futures returned by "send".  Keep in mind that unless the you provide your own Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block.  Calling "flush" will also force all pending events to be batched and POSTed.
 
 For more information on the core RdiClient API, please refer to the javadocs [here](https://metamx.github.io/rdi-client-java/static/apidocs/0.1/).
 
@@ -62,22 +62,24 @@ final RdiClient<MmxAuctionSummary> client = RdiClients.usingJacksonSerializer(co
 - PassthroughSerializer: Use for passing pre-serialized events as a byte array.  This option may be used in cases where serialization is handled upstream.
 
 {% highlight java %}
-final RdiClient<byte[]> client = RdiClients.makeDefault(config, new PassthroughSerializer());
+final RdiClient<byte[]> client = RdiClients.usingPassthroughSerializer(config);
 {% endhighlight %}
 
 ## Compression
 
 The Metamarkets API currently only supports gzip compression.  You may enable compression by setting the "contentEncoding" configuration parameter to "RdiClientConfig.ContentEncoding.GZIP" as shown below:
 {% highlight java %}
-client.contentEncoding(RdiClientConfig.ContentEncoding.GZIP)
-{% endhighlight %}  
+config.contentEncoding(RdiClientConfig.ContentEncoding.GZIP)
+{% endhighlight %}
 Otherwise it will default to "NONE".
 
 Because events will be compressed by the library, you should not compress them prior to calling the client.
 
 ## Scaling
 
-The client is thread-safe.  For best performance, you should generally share a single instance across all threads.  You can configure the number of connections using the "maxConnectionCount" parameter in your RdiClientConfig.
+The client uses a connection pool to send data. You can configure the number of connections using the “maxConnectionCount” parameter in your RdiClientConfig.
+
+The client is thread-safe. For best performance, you should generally share a single instance across all threads.
 
 ## Posting Data & Handling Responses
 
