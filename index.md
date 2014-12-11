@@ -119,7 +119,7 @@ The current version is:
 ## Overview
 Although the RDI client does not require a particular upstream message queue, we have provided an implementation for Kafka users. 
 
-The Kafka implementation assumes that you have already serialzed your event records to one of the formats required by Metamarkets RDI, so the connector will attempt to pass through the pre-serialzed byte arrays to the API.  As mentioned above, our jackson-based serialization library, [RadTech Datatypes](https://github.com/metamx/rad-tech-datatypes), is available for generating the OpenRTB-based event records which may be used in conjunction with the RDI Client.  Compression is disabled by default, but you can optionally enable it in the RdiClientConfig to save some network bandwidth at the expense of CPU.  Currently only GZIP is supported.
+The Kafka implementation assumes that you have already serialized your event records to one of the formats required by Metamarkets RDI, so the connector will attempt to pass through the pre-serialized byte arrays to the API.  As mentioned above, our jackson-based serialization library, [RadTech Datatypes](https://github.com/metamx/rad-tech-datatypes), is available for generating the OpenRTB-based event records which may be used in conjunction with the RDI Client.  Compression is disabled by default, but you can optionally enable it in the RdiClientConfig to save some network bandwidth at the expense of CPU.  Currently only GZIP is supported.
 
 Commits are done manually to support a "guaranteed delivery" approach.
 
