@@ -7,7 +7,7 @@ title:            rdi-client-java
 tagline:          A client library for integrating with Metamarkets real-time ingestion API
 url:              https://metamx.github.io/rdi-client-java/
 author:
-  name:           Metamarket
+  name:           Metamarkets
   url:            https://twitter.com/metamarkets
   email:          contact@metamarkets.com
 
