@@ -36,17 +36,6 @@
   </parent>
 
   <dependencies>
-     <!--Logging; for development only-->
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-    </dependency>
-
-    <!-- Regular dependencies -->
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
