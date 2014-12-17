@@ -19,27 +19,27 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>rdi-client-kafka</artifactId>
-  <version>0.4</version>
+  <version>0.5-SNAPSHOT</version>
   <name>rdi-client-kafka</name>
 
   <scm>
     <connection>scm:git:ssh://git@github.com/metamx/rdi-client.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metamx/rdi-client.git</developerConnection>
     <url>http://www.github.com/metamx/rdi-client</url>
-    <tag>rdi-client-0.4</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <parent>
     <groupId>com.metamx</groupId>
     <artifactId>rdi-client</artifactId>
-    <version>0.4</version>
+    <version>0.5-SNAPSHOT</version>
   </parent>
 
   <dependencies>
     <dependency>
       <groupId>com.metamx</groupId>
       <artifactId>rdi-client-core</artifactId>
-      <version>0.4</version>
+      <version>0.5-SNAPSHOT</version>
     </dependency>
 
     <dependency>
