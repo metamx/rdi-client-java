@@ -21,14 +21,14 @@
 
   <groupId>com.metamx</groupId>
   <artifactId>rdi-client</artifactId>
-  <version>0.4-SNAPSHOT</version>
+  <version>0.4</version>
   <packaging>pom</packaging>
 
   <scm>
     <connection>scm:git:ssh://git@github.com/metamx/rdi-client-java.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metamx/rdi-client-java.git</developerConnection>
     <url>http://github.com/metamx/rdi-client-java</url>
-    <tag>HEAD</tag>
+    <tag>rdi-client-0.4</tag>
   </scm>
 
   <properties>
