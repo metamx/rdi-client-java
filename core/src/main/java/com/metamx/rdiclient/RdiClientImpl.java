@@ -210,6 +210,9 @@ public class RdiClientImpl<T> implements RdiClient<T>
       // Build new request using provided HttpClient
       RequestBuilder newRequest = httpClient.post(url);
 
+      // For quality assurance purposes, your call may be monitored or recorded.
+      newRequest.setHeader("User-Agent", String.format("rdi-client-java/%s", rdiClientVersion));
+
       // Set client version if known.
       if (rdiClientVersion != null && !rdiClientVersion.isEmpty()) {
         newRequest.setHeader("X-RdiClient-Version", rdiClientVersion);
