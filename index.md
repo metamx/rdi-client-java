@@ -161,3 +161,53 @@ Once that's done, you're ready to go.  To kick off the process, run the followin
 {% highlight bash %}
 $ bin/kafka-rdi-consumer.sh
 {% endhighlight %}
+
+# Logging
+
+In order to allow flexibility in the higher-level application, the RdiClient is not shipped with a specific logging library directly included.  
+
+Here is an example of the dependencies required for an implementation using Logback and log4j-over-slf4j:
+
+{% highlight xml %}
+<!-- Logging -->
+<dependency>
+  <groupId>com.metamx</groupId>
+  <artifactId>rdi-client</artifactId>
+  <version>0.0.4</version>
+</dependency>
+<dependency>
+  <groupId>ch.qos.logback</groupId>
+  <artifactId>logback-core</artifactId>
+  <version>1.1.2</version>
+</dependency>
+<dependency>
+  <groupId>ch.qos.logback</groupId>
+  <artifactId>logback-classic</artifactId>
+  <version>1.1.2</version>
+</dependency>
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>log4j-over-slf4j</artifactId>
+  <version>1.7.10</version>
+</dependency>
+{% endhighlight %}
+
+If you want to use use log4j, you can do so by including the following dependencies:
+
+{% highlight xml %}
+<dependency>
+  <groupId>com.metamx</groupId>
+  <artifactId>rdi-client</artifactId>
+  <version>0.0.4</version>
+</dependency>
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-log4j12</artifactId>
+    <version>1.7.10</version>
+</dependency>
+<dependency>
+    <groupId>log4j</groupId>
+    <artifactId>log4j</artifactId>
+    <version>1.2.17</version>
+</dependency>
+{% endhighlight xml %}
