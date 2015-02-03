@@ -159,7 +159,7 @@ zookeeper.session.timeout.ms = 30000
 
 Once that's done, you're ready to go.  To kick off the process, run the following command from the directory where you unpacked the tar file:
 {% highlight bash %}
-$ bin/kafka-rdi-consumer.sh
+$ bin/rdi-kafka-consumer.sh
 {% endhighlight %}
 
 # Logging
