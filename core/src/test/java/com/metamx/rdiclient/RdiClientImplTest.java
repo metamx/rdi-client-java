@@ -32,6 +32,7 @@ import com.metamx.datatypes.openrtb.Publisher;
 import com.metamx.http.client.GoHandler;
 import com.metamx.http.client.MockHttpClient;
 import com.metamx.http.client.Request;
+import com.metamx.http.client.response.HttpResponseHandler;
 import com.metamx.http.client.response.StatusResponseHandler;
 import com.metamx.http.client.response.StatusResponseHolder;
 import junit.framework.Assert;
@@ -117,12 +118,13 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
             Preconditions.checkArgument(
-                request.getHandler() instanceof StatusResponseHandler,
+                httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
             );
             return Futures.immediateFuture((Final) okResponse());
@@ -162,12 +164,13 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
             Preconditions.checkArgument(
-                request.getHandler() instanceof StatusResponseHandler,
+                httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
             );
             return Futures.immediateFuture((Final) okResponse());
@@ -200,12 +203,13 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
             Preconditions.checkArgument(
-                request.getHandler() instanceof StatusResponseHandler,
+                httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
             );
             return Futures.immediateFuture((Final) okResponse());
@@ -242,12 +246,13 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
             Preconditions.checkArgument(
-                request.getHandler() instanceof StatusResponseHandler,
+                httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
             );
             return Futures.immediateFuture((Final) okResponse());
@@ -274,12 +279,13 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
             Preconditions.checkArgument(
-                request.getHandler() instanceof StatusResponseHandler,
+                httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
             );
             Preconditions.checkArgument(
@@ -316,8 +322,9 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             return Futures.immediateFuture((Final) serverResponse(503, "Internal Server Error."));
           }
@@ -357,8 +364,9 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             return Futures.immediateFailedFuture(new IOException("Something Crazy Happened!"));
           }
@@ -392,8 +400,9 @@ public class RdiClientImplTest
         new GoHandler()
         {
           @Override
-          protected <Intermediate, Final> ListenableFuture<Final> go(Request<Intermediate, Final> request)
-              throws Exception
+          protected <Intermediate, Final> ListenableFuture<Final> go(
+              Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
+          ) throws Exception
           {
             if (failures.getAndIncrement() == 0) {
               return Futures.immediateFailedFuture(new IOException("Something Crazy Happened!"));

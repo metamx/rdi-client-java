@@ -33,10 +33,11 @@ import com.metamx.common.lifecycle.LifecycleStart;
 import com.metamx.common.lifecycle.LifecycleStop;
 import com.metamx.common.logger.Logger;
 import com.metamx.http.client.HttpClient;
-import com.metamx.http.client.RequestBuilder;
+import com.metamx.http.client.Request;
 import com.metamx.http.client.response.StatusResponseHandler;
 import com.metamx.http.client.response.StatusResponseHolder;
 import org.jboss.netty.channel.ChannelException;
+import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 
 import java.io.ByteArrayOutputStream;
@@ -208,7 +209,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
       String password = config.getPassword();
 
       // Build new request using provided HttpClient
-      RequestBuilder newRequest = httpClient.post(url);
+      Request newRequest = new Request(HttpMethod.POST, url);
 
       // Set client version if known.
       if (rdiClientVersion != null && !rdiClientVersion.isEmpty()) {
@@ -227,7 +228,13 @@ public class RdiClientImpl<T> implements RdiClient<T>
       final long requestTime = System.currentTimeMillis();
 
       // POST data to endpoint.  On exceptions retry w/ exponential backoff.
-      final ListenableFuture<HttpResponseStatus> status = retryingPost(newRequest, 0, config.getMaxRetries());
+      final ListenableFuture<HttpResponseStatus> status = retryingPost(
+          httpClient,
+          newRequest,
+          0,
+          config.getMaxRetries()
+      );
+
       Futures.addCallback(
           status,
           new FutureCallback<HttpResponseStatus>()
@@ -295,14 +302,15 @@ public class RdiClientImpl<T> implements RdiClient<T>
   }
 
   private ListenableFuture<HttpResponseStatus> retryingPost(
-      final RequestBuilder request,
+      final HttpClient httpClient,
+      final Request request,
       final int attempt,
       final int maxRetries
   )
   {
     final SettableFuture<HttpResponseStatus> retVal = SettableFuture.create();
     final ListenableFuture<HttpResponseStatus> response = Futures.transform(
-        request.go(new StatusResponseHandler(Charsets.UTF_8)),
+        httpClient.go(request, new StatusResponseHandler(Charsets.UTF_8)),
         new AsyncFunction<StatusResponseHolder, HttpResponseStatus>()
         {
           @Override
@@ -352,6 +360,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
                     public void run()
                     {
                       final ListenableFuture<HttpResponseStatus> nextTry = retryingPost(
+                          httpClient,
                           request,
                           attempt + 1,
                           maxRetries - 1
