@@ -21,7 +21,6 @@ import com.google.common.base.Charsets;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.metamx.common.Props;
 import com.metamx.common.logger.Logger;
 import com.metamx.rdiclient.RdiClient;
 import com.metamx.rdiclient.RdiClientConfig;
@@ -32,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FileInputMain
@@ -41,12 +41,15 @@ public class FileInputMain
   public static void main(String[] args) throws Exception
   {
     if (args.length == 0) {
-      System.err.println(String.format("Usage: %s file1 file2 ...", FileInputMain.class.getCanonicalName()));
+      System.err.println(String.format("Usage: %s file1 [file2 ...]", FileInputMain.class.getCanonicalName()));
       System.exit(1);
     }
 
+    final Properties props = Examples.readProperties();
+    final String feed = Examples.getFeed(props);
+
     // Start up RdiClient.
-    final RdiClientConfig rdiConfig = RdiClientConfig.fromProperties(Props.fromFilename("conf/rdi.properties"));
+    final RdiClientConfig rdiConfig = RdiClientConfig.fromProperties(props);
     final RdiClient<byte[]> rdiClient = RdiClients.usingPassthroughSerializer(rdiConfig);
     rdiClient.start();
 
@@ -62,7 +65,7 @@ public class FileInputMain
         String line;
         while ((line = in.readLine()) != null) {
           // Asynchronously send a message.
-          final ListenableFuture<RdiResponse> send = rdiClient.send(line.getBytes(Charsets.UTF_8));
+          final ListenableFuture<RdiResponse> send = rdiClient.send(feed, line.getBytes(Charsets.UTF_8));
           sends.incrementAndGet();
 
           // When the message is acknowledged (or fails), increment the appropriate counter.

@@ -52,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdiClientImplTest
 {
+  private static final String FEED = "dummy";
 
   final MockHttpClient mockClient = new MockHttpClient();
   final Lifecycle lifecycle = new Lifecycle();
@@ -122,7 +123,7 @@ public class RdiClientImplTest
               Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
           ) throws Exception
           {
-            Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
+            Assert.assertEquals(new URL(TARGET_URL + "/events/" + FEED), request.getUrl());
             Preconditions.checkArgument(
                 httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
@@ -135,7 +136,7 @@ public class RdiClientImplTest
     rdiClient.start();
     final List<ListenableFuture<RdiResponse>> futures = Lists.newArrayList();
     for (MmxAuctionSummary event : Arrays.asList(sampleEventBasic, sampleEventBasic)) {
-      futures.add(rdiClient.send(objectMapper.writeValueAsBytes(event)));
+      futures.add(rdiClient.send(FEED, objectMapper.writeValueAsBytes(event)));
     }
     final List<RdiResponse> responses = Futures.allAsList(futures).get();
     Assert.assertEquals(Lists.newArrayList(RdiResponse.create(), RdiResponse.create()), responses);
@@ -168,7 +169,7 @@ public class RdiClientImplTest
               Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
           ) throws Exception
           {
-            Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
+            Assert.assertEquals(new URL(TARGET_URL + "/events/" + FEED), request.getUrl());
             Preconditions.checkArgument(
                 httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
@@ -185,7 +186,7 @@ public class RdiClientImplTest
         sampleEventLarge,
         sampleEventLarge
     )) {
-      rdiClient.send(event);
+      rdiClient.send(FEED, event);
     }
     rdiClient.flush();
     rdiClient.close();
@@ -207,7 +208,7 @@ public class RdiClientImplTest
               Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
           ) throws Exception
           {
-            Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
+            Assert.assertEquals(new URL(TARGET_URL + "/events/" + FEED), request.getUrl());
             Preconditions.checkArgument(
                 httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
@@ -224,7 +225,7 @@ public class RdiClientImplTest
         sampleEventLarge,
         sampleEventLarge
     )) {
-      rdiClient.send(event);
+      rdiClient.send(FEED, event);
     }
     rdiClient.flush();
     rdiClient.close();
@@ -250,7 +251,7 @@ public class RdiClientImplTest
               Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
           ) throws Exception
           {
-            Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
+            Assert.assertEquals(new URL(TARGET_URL + "/events/" + FEED), request.getUrl());
             Preconditions.checkArgument(
                 httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
@@ -262,7 +263,7 @@ public class RdiClientImplTest
 
     rdiClient.start();
     exception.expect(IllegalArgumentException.class);
-    rdiClient.send(oversizeEvent);
+    rdiClient.send(FEED, oversizeEvent);
     rdiClient.flush();
     rdiClient.close();
   }
@@ -283,7 +284,7 @@ public class RdiClientImplTest
               Request request, HttpResponseHandler<Intermediate, Final> httpResponseHandler
           ) throws Exception
           {
-            Assert.assertEquals(new URL(TARGET_URL), request.getUrl());
+            Assert.assertEquals(new URL(TARGET_URL + "/events/" + FEED), request.getUrl());
             Preconditions.checkArgument(
                 httpResponseHandler instanceof StatusResponseHandler,
                 "WTF?! Expected StatusResponseHandler."
@@ -304,7 +305,7 @@ public class RdiClientImplTest
     final List<MmxAuctionSummary> events = Arrays.asList(sampleEventBasic, sampleEventBasic, sampleEventBasic);
     rdiClient.start();
     for (MmxAuctionSummary event : events) {
-      rdiClient.send(event);
+      rdiClient.send(FEED, event);
     }
     rdiClient.close();
     Assert.assertTrue("mockClient succeeded", mockClient.succeeded());
@@ -333,7 +334,7 @@ public class RdiClientImplTest
     final List<MmxAuctionSummary> events = Arrays.asList(sampleEventBasic, sampleEventBasic, sampleEventBasic);
     rdiClient.start();
     for (MmxAuctionSummary event : events) {
-      final ListenableFuture<RdiResponse> result = rdiClient.send(event);
+      final ListenableFuture<RdiResponse> result = rdiClient.send(FEED, event);
       Exception e = null;
       try {
         result.get();
@@ -374,7 +375,7 @@ public class RdiClientImplTest
     );
     rdiClient.start();
 
-    final ListenableFuture<RdiResponse> result = rdiClient.send(sampleEventBasic);
+    final ListenableFuture<RdiResponse> result = rdiClient.send(FEED, sampleEventBasic);
     Exception e = null;
     try {
       result.get();
@@ -414,7 +415,7 @@ public class RdiClientImplTest
     );
     rdiClient.start();
 
-    final ListenableFuture<RdiResponse> result = rdiClient.send(sampleEventBasic);
+    final ListenableFuture<RdiResponse> result = rdiClient.send(FEED, sampleEventBasic);
     Assert.assertEquals(RdiResponse.create(), result.get());
     rdiClient.close();
   }

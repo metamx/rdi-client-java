@@ -18,10 +18,8 @@
 package com.metamx.rdiclient.kafka;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.metamx.common.lifecycle.LifecycleStart;
 import com.metamx.common.lifecycle.LifecycleStop;
@@ -29,14 +27,15 @@ import com.metamx.common.logger.Logger;
 import com.metamx.rdiclient.RdiClient;
 import com.metamx.rdiclient.RdiResponse;
 import kafka.consumer.KafkaStream;
+import kafka.consumer.TopicFilter;
 import kafka.javaapi.consumer.ConsumerConnector;
 import kafka.message.MessageAndMetadata;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -50,28 +49,36 @@ public class KafkaRdiConsumer
   private final ExecutorService consumerExec;
   private final Thread commitThread;
   private final ConsumerConnector consumerConnector;
+  private final TopicFilter topicFilter;
+  private final KafkaTranslator kafkaTranslator;
   private final RdiClient<byte[]> rdiClient;
-  private final String topic;
-  private final int threads;
+  private final String feed;
+  private final int numThreads;
 
   private final ReentrantReadWriteLock commitLock = new ReentrantReadWriteLock();
+  private final AtomicBoolean shutdown = new AtomicBoolean();
 
   private final Object flushAwaitLock = new Object();
   private int pending = 0; // Use under flushAwaitLock
 
   public KafkaRdiConsumer(
       final ConsumerConnector consumerConnector,
+      final TopicFilter topicFilter,
+      final KafkaTranslator kafkaTranslator,
       final RdiClient<byte[]> rdiClient,
-      final String topic,
-      final int threads
+      final String feed,
+      final int numThreads
   )
   {
     this.consumerConnector = consumerConnector;
+    this.kafkaTranslator = kafkaTranslator;
     this.rdiClient = rdiClient;
-    this.topic = topic;
-    this.threads = threads;
+    this.topicFilter = topicFilter;
+    this.feed = feed;
+    this.numThreads = numThreads;
+
     this.consumerExec = Executors.newFixedThreadPool(
-        threads,
+        numThreads,
         new ThreadFactoryBuilder().setNameFormat("KafkaRdiConsumer-%d")
                                   .setDaemon(true)
                                   .build()
@@ -131,6 +138,9 @@ public class KafkaRdiConsumer
             }
           }
         }
+        catch (InterruptedException e) {
+          log.debug(e, "Commit thread interrupted.");
+        }
         catch (Throwable e) {
           log.error(e, "Commit thread failed!");
           throw Throwables.propagate(e);
@@ -149,10 +159,11 @@ public class KafkaRdiConsumer
 
   private void startConsumers()
   {
-    final Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumerConnector.createMessageStreams(
-        ImmutableMap.of(topic, threads)
+    final List<KafkaStream<byte[], byte[]>> kafkaStreams = consumerConnector.createMessageStreamsByFilter(
+        topicFilter,
+        numThreads
     );
-    for (final KafkaStream<byte[], byte[]> kafkaStream : consumerMap.get(topic)) {
+    for (final KafkaStream<byte[], byte[]> kafkaStream : kafkaStreams) {
       consumerExec.submit(
           new Runnable()
           {
@@ -173,38 +184,45 @@ public class KafkaRdiConsumer
                   // Zookeeper)
                   commitLock.readLock().lockInterruptibly();
                   try {
-                    final byte[] message = iteratorIn.next().message();
-                    final ListenableFuture<RdiResponse> send;
-                    incrementPending();
-                    send = rdiClient.send(message);
-                    Futures.addCallback(
-                        send,
-                        new FutureCallback<RdiResponse>()
-                        {
-                          @Override
-                          public void onSuccess(RdiResponse result)
-                          {
-                            decrementPending();
-                          }
+                    final MessageAndMetadata<byte[], byte[]> incoming = iteratorIn.next();
+                    final List<byte[]> outgoing = kafkaTranslator.translate(incoming);
 
-                          @Override
-                          public void onFailure(Throwable t)
+                    incrementPending(outgoing.size());
+                    for (byte[] message : outgoing) {
+                      Futures.addCallback(
+                          rdiClient.send(feed, message),
+                          new FutureCallback<RdiResponse>()
                           {
-                            log.error(t, "Failed to send an event. Stopping.");
-                            stop();
+                            @Override
+                            public void onSuccess(RdiResponse result)
+                            {
+                              decrementPending();
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t)
+                            {
+                              log.error(t, "Failed to send an event for topic[%s]. Stopping.", incoming.topic());
+                              stop();
+                            }
                           }
-                        }
-                    );
+                      );
+                    }
                   }
                   finally {
                     commitLock.readLock().unlock();
                   }
                 }
               }
+              catch (InterruptedException e) {
+                log.debug(e, "Consumer thread interrupted.");
+              }
               catch (Throwable e) {
                 log.error(e, "OMG! An exception!!");
-                stop();
                 throw Throwables.propagate(e);
+              }
+              finally {
+                stop();
               }
             }
           }
@@ -212,17 +230,17 @@ public class KafkaRdiConsumer
     }
   }
 
-  private void incrementPending()
+  private void incrementPending(int n)
   {
     synchronized (flushAwaitLock) {
-      pending ++;
+      pending += n;
     }
   }
 
   private void decrementPending()
   {
     synchronized (flushAwaitLock) {
-      pending --;
+      pending--;
       if (pending == 0) {
         flushAwaitLock.notifyAll();
       }
@@ -232,7 +250,11 @@ public class KafkaRdiConsumer
   @LifecycleStop
   public void stop()
   {
-    commitThread.interrupt();
-    consumerExec.shutdownNow();
+    if (shutdown.compareAndSet(false, true)) {
+      log.info("Shutting down.");
+      consumerConnector.shutdown();
+      commitThread.interrupt();
+      consumerExec.shutdownNow();
+    }
   }
 }

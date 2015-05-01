@@ -19,7 +19,9 @@ package com.metamx.rdiclient;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AsyncFunction;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -47,6 +49,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
@@ -63,7 +66,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
   private final Serializer<T> serializer;
   private final Lifecycle lifecycle;
   private final HttpClient httpClient;
-  private final URL url;
+  private final URL baseUrl;
   private final long retryDurationOverride;
 
   private static final int MAX_EVENT_SIZE = 100 * 1024; // Set max event size of 100 KB
@@ -71,7 +74,9 @@ public class RdiClientImpl<T> implements RdiClient<T>
   private final Object bufferLock = new Object();
   private final Semaphore postSemaphore;
   private int queuedByteCount = 0; // Only use under bufferLock
-  private ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> buffer; // Only use under bufferLock
+
+  // feed -> list of (future for one message, that message); one per each outstanding future
+  private Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> buffers; // Only use under bufferLock
 
   private final String rdiClientVersion;
 
@@ -99,10 +104,10 @@ public class RdiClientImpl<T> implements RdiClient<T>
     this.httpClient = httpClient;
     this.rdiClientVersion = RdiClient.class.getPackage().getImplementationVersion();
     this.postSemaphore = new Semaphore(config.getMaxConnectionCount());
-    this.buffer = Lists.newArrayListWithExpectedSize(config.getFlushCount());
+    this.buffers = Maps.newHashMap();
     this.retryDurationOverride = retryDurationOverride;
     try {
-      this.url = new URL(config.getRdiUrl());
+      this.baseUrl = new URL(config.getRdiUrl());
     }
     catch (MalformedURLException e) {
       throw new IAE(String.format("Invalid URL: %s", config.getRdiUrl()));
@@ -122,7 +127,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
   }
 
   @Override
-  public ListenableFuture<RdiResponse> send(T event) throws InterruptedException
+  public ListenableFuture<RdiResponse> send(final String feed, final T event) throws InterruptedException
   {
     final SettableFuture<RdiResponse> retVal = SettableFuture.create();
     final byte[] eventBytes;
@@ -145,32 +150,28 @@ public class RdiClientImpl<T> implements RdiClient<T>
       );
     }
 
-    final ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> preSendSwappedBuffer;
-    final ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> postSendSwappedBuffer;
+    final Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> preSendSwappedBuffers;
+    final Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> postSendSwappedBuffers;
     synchronized (bufferLock) {
       if (queuedByteCount + eventBytes.length >= config.getFlushBytes()) {
-        preSendSwappedBuffer = swap();
+        preSendSwappedBuffers = swap();
       } else {
-        preSendSwappedBuffer = null;
+        preSendSwappedBuffers = Maps.newHashMap();
       }
+
+      final ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> buffer = getBuffer(feed);
 
       buffer.add(Pair.of(retVal, eventBytes));
       queuedByteCount += eventBytes.length;
 
       if (buffer.size() >= config.getFlushCount()) {
-        postSendSwappedBuffer = swap();
+        postSendSwappedBuffers = swap();
       } else {
-        postSendSwappedBuffer = null;
+        postSendSwappedBuffers = Maps.newHashMap();
       }
     }
 
-    if (preSendSwappedBuffer != null) {
-      flush(preSendSwappedBuffer);
-    }
-
-    if (postSendSwappedBuffer != null) {
-      flush(postSendSwappedBuffer);
-    }
+    flushMany(ImmutableList.of(preSendSwappedBuffers, postSendSwappedBuffers));
 
     return retVal;
   }
@@ -178,20 +179,69 @@ public class RdiClientImpl<T> implements RdiClient<T>
   @Override
   public void flush() throws InterruptedException
   {
-    flush(swap());
+    flushMany(ImmutableList.of(swap()));
   }
 
-  private ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> swap()
+  // If you do *anything* with the buffer returned by this method, you *must* have already acquired the bufferLock.
+  // This is because the buffers are not thread-safe.
+  private ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> getBuffer(final String feed)
   {
     synchronized (bufferLock) {
-      final ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> exBuffer = buffer;
-      buffer = Lists.newArrayListWithExpectedSize(config.getFlushCount());
-      queuedByteCount = 0;
-      return exBuffer;
+      ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>> buffer = buffers.get(feed);
+      if (buffer == null) {
+        buffer = Lists.newArrayListWithExpectedSize(config.getFlushCount());
+        buffers.put(feed, buffer);
+      }
+      return buffer;
     }
   }
 
-  private void flush(final List<Pair<SettableFuture<RdiResponse>, byte[]>> exBuffer) throws InterruptedException
+  private Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> swap()
+  {
+    synchronized (bufferLock) {
+      final Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> exBuffers = buffers;
+      buffers = Maps.newHashMap();
+      queuedByteCount = 0;
+      return exBuffers;
+    }
+  }
+
+  // This method ensures that the SettableFutures in exBuffers will be resolved.
+  private void flushMany(
+      final List<Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>>> exBufferss
+  )
+  {
+    final List<Exception> exceptions = Lists.newArrayList();
+
+    for (Map<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> exBuffers : exBufferss) {
+      for (Map.Entry<String, ArrayList<Pair<SettableFuture<RdiResponse>, byte[]>>> entry : exBuffers.entrySet()) {
+        try {
+          flushSingle(entry.getKey(), entry.getValue());
+        } catch (Exception e) {
+          // Remember the exception and keep flushing other buffers. It's important to flush all the buffers, because
+          // otherwise the futures we have already given to the user will never resolve.
+          exceptions.add(
+              new RuntimeException(String.format("Flush failed for feed[%s]", entry.getKey()), e)
+          );
+        }
+      }
+    }
+
+    // Throw exceptions, if any.
+    if (!exceptions.isEmpty()) {
+      final RuntimeException e = new RuntimeException("Flush failed");
+      for (Exception e2 : exceptions) {
+        e.addSuppressed(e2);
+      }
+      throw e;
+    }
+  }
+
+  // This method ensures that the SettableFutures in exBuffer will be resolved.
+  private void flushSingle(
+      final String feed,
+      final List<Pair<SettableFuture<RdiResponse>, byte[]>> exBuffer
+  ) throws InterruptedException
   {
     if (exBuffer.isEmpty()) {
       // Nothing to do.
@@ -201,6 +251,20 @@ public class RdiClientImpl<T> implements RdiClient<T>
     postSemaphore.acquire();
     final AtomicBoolean released = new AtomicBoolean(false);
     try {
+      // Determine URL for this feed.
+      final URL url;
+      try {
+        url = new URL(
+            baseUrl.getProtocol(),
+            baseUrl.getHost(),
+            baseUrl.getPort(),
+            (baseUrl.getPath().endsWith("/") ? baseUrl.getPath() + "events/" : baseUrl.getPath() + "/events/") + feed,
+            null
+        );
+      } catch (MalformedURLException e) {
+        throw Throwables.propagate(e);
+      }
+
       // Batch events prior to posting.
       final byte[] serializedBatch = serializeBatch(exBuffer);
 
@@ -214,6 +278,8 @@ public class RdiClientImpl<T> implements RdiClient<T>
       // Set client version if known.
       if (rdiClientVersion != null && !rdiClientVersion.isEmpty()) {
         newRequest.setHeader("X-RdiClient-Version", rdiClientVersion);
+      } else {
+        newRequest.setHeader("X-RdiClient-Version", "unknown");
       }
 
       // Set header for content encoding if specified.
