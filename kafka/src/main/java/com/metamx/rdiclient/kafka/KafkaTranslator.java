@@ -4,7 +4,7 @@ import kafka.message.MessageAndMetadata;
 
 import java.util.List;
 
-public interface KafkaTranslator
+public interface KafkaTranslator<T>
 {
-  List<byte[]> translate(MessageAndMetadata<byte[], byte[]> message);
+  List<T> translate(MessageAndMetadata<byte[], byte[]> message);
 }

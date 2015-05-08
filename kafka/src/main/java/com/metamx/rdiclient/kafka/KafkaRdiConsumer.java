@@ -41,7 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Kafka Consumer that produces/writes to RDI.
  */
-public class KafkaRdiConsumer
+public class KafkaRdiConsumer<T>
 {
   private static final Logger log = new Logger(Main.class);
   private static final long COMMIT_MILLIS = 60000;
@@ -50,8 +50,8 @@ public class KafkaRdiConsumer
   private final Thread commitThread;
   private final ConsumerConnector consumerConnector;
   private final TopicFilter topicFilter;
-  private final KafkaTranslator kafkaTranslator;
-  private final RdiClient<byte[]> rdiClient;
+  private final KafkaTranslator<T> kafkaTranslator;
+  private final RdiClient<T> rdiClient;
   private final String feed;
   private final int numThreads;
 
@@ -64,8 +64,8 @@ public class KafkaRdiConsumer
   public KafkaRdiConsumer(
       final ConsumerConnector consumerConnector,
       final TopicFilter topicFilter,
-      final KafkaTranslator kafkaTranslator,
-      final RdiClient<byte[]> rdiClient,
+      final KafkaTranslator<T> kafkaTranslator,
+      final RdiClient<T> rdiClient,
       final String feed,
       final int numThreads
   )
@@ -185,10 +185,10 @@ public class KafkaRdiConsumer
                   commitLock.readLock().lockInterruptibly();
                   try {
                     final MessageAndMetadata<byte[], byte[]> incoming = iteratorIn.next();
-                    final List<byte[]> outgoing = kafkaTranslator.translate(incoming);
+                    final List<T> outgoing = kafkaTranslator.translate(incoming);
 
                     incrementPending(outgoing.size());
-                    for (byte[] message : outgoing) {
+                    for (T message : outgoing) {
                       Futures.addCallback(
                           rdiClient.send(feed, message),
                           new FutureCallback<RdiResponse>()

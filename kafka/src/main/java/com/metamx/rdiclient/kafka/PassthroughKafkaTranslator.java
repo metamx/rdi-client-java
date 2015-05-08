@@ -5,7 +5,7 @@ import kafka.message.MessageAndMetadata;
 
 import java.util.List;
 
-public class PassthroughKafkaTranslator implements KafkaTranslator
+public class PassthroughKafkaTranslator implements KafkaTranslator<byte[]>
 {
   private static KafkaTranslator INSTANCE = new PassthroughKafkaTranslator();
 
