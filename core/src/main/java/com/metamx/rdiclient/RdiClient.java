@@ -18,6 +18,7 @@
 package com.metamx.rdiclient;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.metamx.rdiclient.metrics.RdiMetrics;
 
 /**
  * Interface for creating a client to post data to Metamarkets real-time data ingestion API.
@@ -41,6 +42,11 @@ public interface RdiClient<T>
    * Initialize the RdiClient. Must be called before calling send() or flush().
    */
   void start();
+
+  /**
+   * Return a metrics object that you can use to check on the progress of the RdiClient.
+   */
+  RdiMetrics getMetrics();
 
   /**
    * Send messages to the server. "Send" will queue events up and then POST a new batch periodically when the events

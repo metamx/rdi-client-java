@@ -38,6 +38,7 @@ import com.metamx.http.client.HttpClient;
 import com.metamx.http.client.Request;
 import com.metamx.http.client.response.StatusResponseHandler;
 import com.metamx.http.client.response.StatusResponseHolder;
+import com.metamx.rdiclient.metrics.RdiMetrics;
 import org.jboss.netty.channel.ChannelException;
 import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
@@ -68,6 +69,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
   private final HttpClient httpClient;
   private final URL baseUrl;
   private final long retryDurationOverride;
+  private final RdiMetrics metrics;
 
   private static final int MAX_EVENT_SIZE = 100 * 1024; // Set max event size of 100 KB
 
@@ -106,6 +108,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
     this.postSemaphore = new Semaphore(config.getMaxConnectionCount());
     this.buffers = Maps.newHashMap();
     this.retryDurationOverride = retryDurationOverride;
+    this.metrics = new RdiMetrics();
     try {
       this.baseUrl = new URL(config.getRdiUrl());
     }
@@ -124,6 +127,12 @@ public class RdiClientImpl<T> implements RdiClient<T>
     catch (Exception e) {
       throw Throwables.propagate(e);
     }
+  }
+
+  @Override
+  public RdiMetrics getMetrics()
+  {
+    return metrics;
   }
 
   @Override
@@ -287,7 +296,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
         newRequest.setHeader("Content-Encoding", contentEncoding.toString().toLowerCase());
       }
 
-      log.debug("url[%s] events.size[%s]", url, exBuffer.size());
+      log.debug("url[%s] feed[%s] events.size[%s]", url, feed, exBuffer.size());
       newRequest.setBasicAuthentication(username, password);
       newRequest.setContent("application/json", serializedBatch);  // In the future, may not be hard coded to json
 
@@ -296,6 +305,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
       // POST data to endpoint.  On exceptions retry w/ exponential backoff.
       final ListenableFuture<HttpResponseStatus> status = retryingPost(
           httpClient,
+          feed,
           newRequest,
           0,
           config.getMaxRetries()
@@ -312,15 +322,17 @@ public class RdiClientImpl<T> implements RdiClient<T>
                 postSemaphore.release();
                 for (Pair<SettableFuture<RdiResponse>, byte[]> pair : exBuffer) {
                   pair.lhs.set(new RdiResponse());
+                  metrics.incSent(feed, pair.rhs.length);
                 }
               } else {
                 log.warn("Blocked attempted double-release of semaphore.");
               }
 
               log.debug(
-                  "Received status[%s %s] after %,dms.",
+                  "Received status[%s %s] for feed[%s] after %,dms.",
                   result.getCode(),
                   result.getReasonPhrase().trim(),
+                  feed,
                   System.currentTimeMillis() - requestTime
               );
             }
@@ -332,12 +344,13 @@ public class RdiClientImpl<T> implements RdiClient<T>
                 postSemaphore.release();
                 for (Pair<SettableFuture<RdiResponse>, byte[]> pair : exBuffer) {
                   pair.lhs.setException(e);
+                  metrics.incFailed(feed);
                 }
               } else {
                 log.warn("Blocked attempted double-release of semaphore.");
               }
 
-              log.warn(e, "Got exception when posting events to urlString[%s].", config.getRdiUrl());
+              log.warn(e, "Got exception when posting events to urlString[%s] for feed[%s].", config.getRdiUrl(), feed);
             }
           }
       );
@@ -347,6 +360,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
         postSemaphore.release();
         for (Pair<SettableFuture<RdiResponse>, byte[]> pair : exBuffer) {
           pair.lhs.setException(e);
+          metrics.incFailed(feed);
         }
       } else {
         log.warn("Blocked attempted double-release of semaphore.");
@@ -369,6 +383,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
 
   private ListenableFuture<HttpResponseStatus> retryingPost(
       final HttpClient httpClient,
+      final String feed,
       final Request request,
       final int attempt,
       final int maxRetries
@@ -418,7 +433,16 @@ public class RdiClientImpl<T> implements RdiClient<T>
 
             if (shouldRetry) {
               final long sleepMillis = retryDuration(attempt);
-              log.warn(e, "Failed try #%d, retrying in %,dms (%,d tries left).", attempt + 1, sleepMillis, maxRetries);
+              log.warn(
+                  e,
+                  "Failed try #%d for feed[%s], retrying in %,dms (%,d tries left).",
+                  attempt + 1,
+                  feed,
+                  sleepMillis,
+                  maxRetries
+              );
+              metrics.incRetransmitted(feed);
+
               retryExecutor.schedule(
                   new Runnable()
                   {
@@ -427,6 +451,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
                     {
                       final ListenableFuture<HttpResponseStatus> nextTry = retryingPost(
                           httpClient,
+                          feed,
                           request,
                           attempt + 1,
                           maxRetries - 1
@@ -482,7 +507,6 @@ public class RdiClientImpl<T> implements RdiClient<T>
       RdiClientConfig.ContentEncoding contentEncoding = config.getContentEncoding();
 
       if (RdiClientConfig.ContentEncoding.GZIP.equals(contentEncoding)) {
-        log.debug("Creating Gzip output stream.");
         os = new GZIPOutputStream(baos);
       } else if (RdiClientConfig.ContentEncoding.NONE.equals(contentEncoding)) {
         os = baos;

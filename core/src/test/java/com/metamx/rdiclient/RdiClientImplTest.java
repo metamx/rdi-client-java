@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -35,6 +36,7 @@ import com.metamx.http.client.Request;
 import com.metamx.http.client.response.HttpResponseHandler;
 import com.metamx.http.client.response.StatusResponseHandler;
 import com.metamx.http.client.response.StatusResponseHolder;
+import com.metamx.rdiclient.metrics.FeedMetrics;
 import junit.framework.Assert;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
@@ -142,6 +144,13 @@ public class RdiClientImplTest
     Assert.assertEquals(Lists.newArrayList(RdiResponse.create(), RdiResponse.create()), responses);
     rdiClient.close();
     Assert.assertTrue("mockClient succeeded", mockClient.succeeded());
+
+    // Test metrics.
+    final FeedMetrics metrics = Iterables.getOnlyElement(rdiClient.getMetrics().all());
+    Assert.assertEquals(2, metrics.getSentMessages());
+    Assert.assertEquals(94, metrics.getSentBytes());
+    Assert.assertEquals(0, metrics.getRetransmittedMessages());
+    Assert.assertEquals(0, metrics.getFailedMessages());
   }
 
   @Test
