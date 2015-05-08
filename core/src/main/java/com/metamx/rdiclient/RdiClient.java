@@ -18,6 +18,7 @@
 package com.metamx.rdiclient;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.metamx.rdiclient.metrics.RdiMetrics;
 
 /**
  * Interface for creating a client to post data to Metamarkets real-time data ingestion API.
@@ -40,7 +41,12 @@ public interface RdiClient<T>
   /**
    * Initialize the RdiClient. Must be called before calling send() or flush().
    */
-  public void start();
+  void start();
+
+  /**
+   * Return a metrics object that you can use to check on the progress of the RdiClient.
+   */
+  RdiMetrics getMetrics();
 
   /**
    * Send messages to the server. "Send" will queue events up and then POST a new batch periodically when the events
@@ -56,13 +62,14 @@ public interface RdiClient<T>
    * You can attach callbacks to the futures returned by "send", but keep in mind that unless you provide your own
    * Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block.
    *
+   * @param feed name of the feed to which you want to send this message.
    * @param message event message of generic type to be posted via the client.
    * @return future representing the post result for this message.
    *
    * @throws java.lang.IllegalArgumentException if your message fails to serialize, or if its size is too large.
    * @throws java.lang.InterruptedException if sending needs to block, and is interrupted while doing so.
    */
-  public ListenableFuture<RdiResponse> send(T message) throws InterruptedException;
+  ListenableFuture<RdiResponse> send(String feed, T message) throws InterruptedException;
 
   /**
    * Calling "flush" will force all pending events to be batched and sent to the server immediately. This method may
@@ -75,7 +82,7 @@ public interface RdiClient<T>
    *
    * @throws java.lang.InterruptedException if flushing is interrupted.
    */
-  public void flush() throws InterruptedException;
+  void flush() throws InterruptedException;
 
   /**
    * Signal that event transmission is complete. Close the client.
@@ -84,5 +91,5 @@ public interface RdiClient<T>
    * that all your messages have been sent, you must wait for them to be acknowledged (i.e., the Futures resolve) before
    * closing the client.
    */
-  public void close();
+  void close();
 }

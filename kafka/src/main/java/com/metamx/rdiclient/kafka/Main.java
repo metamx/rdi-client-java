@@ -18,63 +18,70 @@
 package com.metamx.rdiclient.kafka;
 
 import com.google.common.base.Preconditions;
-import com.metamx.common.Props;
 import com.metamx.common.lifecycle.Lifecycle;
 import com.metamx.common.logger.Logger;
 import com.metamx.rdiclient.RdiClient;
 import com.metamx.rdiclient.RdiClientConfig;
 import com.metamx.rdiclient.RdiClients;
+import com.metamx.rdiclient.example.Examples;
+import kafka.consumer.Consumer;
 import kafka.consumer.ConsumerConfig;
+import kafka.consumer.Whitelist;
 import kafka.javaapi.consumer.ConsumerConnector;
-import kafka.javaapi.consumer.ZookeeperConsumerConnector;
 
 import java.io.IOException;
 import java.util.Properties;
 
 /**
- *
  * An implementation of the RdiClient for connecting a Kafka cluster to RDI.
- *
  */
 public class Main
 {
   private static final Logger log = new Logger(Main.class);
+  private static final String KAFKA_PROPERTY_PREFIX = "kafka.";
 
   public static void main(String[] args) throws Exception
   {
     final Lifecycle lifecycle = new Lifecycle();
-    final Properties rdiProperties;
-    final Properties kafkaProperties;
+    final Properties rdiProperties = Examples.readProperties();
+    final Properties kafkaProperties = new Properties();
+    final String feed = Examples.getFeed(rdiProperties);
     final ConsumerConnector consumerConnector;
     final KafkaRdiConsumer kafkaRdiConsumer;
     final RdiClient<byte[]> rdiClient;
 
-    if (args.length == 0) {
-      rdiProperties = Props.fromFilename("conf/rdi.properties");
-      kafkaProperties = Props.fromFilename("conf/kafka.properties");
-    } else if (args.length == 2) {
-      rdiProperties = Props.fromFilename(args[0]);
-      kafkaProperties = Props.fromFilename(args[1]);
-    } else {
-      System.err.println(String.format("Usage: %s rdi.properties kafka.properties", Main.class.getCanonicalName()));
+    if (args.length > 0) {
+      System.err.println(String.format("Usage: %s", Main.class.getCanonicalName()));
       System.exit(1);
       throw new AssertionError("#notreached");
     }
 
+    for (final String propertyName : rdiProperties.stringPropertyNames()) {
+      if (propertyName.startsWith(KAFKA_PROPERTY_PREFIX)) {
+        kafkaProperties.setProperty(
+            propertyName.substring(KAFKA_PROPERTY_PREFIX.length()),
+            rdiProperties.getProperty(propertyName)
+        );
+      }
+    }
+
     rdiClient = getRdiClient(lifecycle, rdiProperties);
-    consumerConnector = getConsumerConnector(lifecycle, kafkaProperties);
+    consumerConnector = getConsumerConnector(kafkaProperties);
     kafkaRdiConsumer = lifecycle.addManagedInstance(
         new KafkaRdiConsumer(
             consumerConnector,
+            new Whitelist(getKafkaTopic(rdiProperties)),
+            PassthroughKafkaTranslator.instance(),
             rdiClient,
-            getKafkaTopic(rdiProperties),
+            feed,
             getKafkaThreads(rdiProperties)
         )
     );
 
     try {
       lifecycle.start();
-    } catch (Throwable t) {
+    }
+    catch (Throwable t) {
       log.error(t, "Error while starting up. Exiting.");
       System.exit(1);
     }
@@ -94,7 +101,6 @@ public class Main
     );
 
     kafkaRdiConsumer.join();
-    System.exit(0);
   }
 
   private static RdiClient<byte[]> getRdiClient(final Lifecycle lifecycle, final Properties props) throws IOException
@@ -102,27 +108,15 @@ public class Main
     return lifecycle.addManagedInstance(RdiClients.usingPassthroughSerializer(RdiClientConfig.fromProperties(props)));
   }
 
-  private static ConsumerConnector getConsumerConnector(final Lifecycle lifecycle, final Properties props)
+  private static ConsumerConnector getConsumerConnector(final Properties props)
   {
-    final ConsumerConfig config = new ConsumerConfig(props);
-    final ConsumerConnector consumerConnector = new ZookeeperConsumerConnector(config);
-    lifecycle.addHandler(
-        new Lifecycle.Handler()
-        {
-          @Override
-          public void start() throws Exception
-          {
-            // Nothing
-          }
+    final Properties newProps = new Properties(props);
+    newProps.setProperty("auto.commit.enable", "false");
 
-          @Override
-          public void stop()
-          {
-            consumerConnector.shutdown();
-          }
-        }
-    );
-    return consumerConnector;
+    final ConsumerConfig config = new ConsumerConfig(props);
+    Preconditions.checkState(!config.autoCommitEnable(), "autocommit must be off");
+
+    return Consumer.createJavaConsumerConnector(config);
   }
 
   private static String getKafkaTopic(final Properties props)
