@@ -110,7 +110,12 @@ public class Main
 
   private static ConsumerConnector getConsumerConnector(final Properties props)
   {
+    final Properties newProps = new Properties(props);
+    newProps.setProperty("auto.commit.enable", "false");
+
     final ConsumerConfig config = new ConsumerConfig(props);
+    Preconditions.checkState(!config.autoCommitEnable(), "autocommit must be off");
+
     return Consumer.createJavaConsumerConnector(config);
   }
 
