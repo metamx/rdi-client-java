@@ -9,11 +9,11 @@ layout: default
 
 The RdiClient for Java is a client library for posting event streams to Metamarkets' real-time data ingestion (RDI) API, which receives and processes event data in real-time.  The client comes with functionality to handle connecting to the HTTPS endpoint, authentication, serialization & batching events, connection pooling, HTTP transport, and error handling (w/ exponential-backoff retries).
 
-The RdiClient for Java is currently in beta and the current version is 0.4. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.4/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
+The RdiClient for Java is currently in beta and the current version is 0.7. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.4/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
 
 ## Getting Started with the Client Library
 
-The RdiClient artifacts are available on Metamarkets artifactory (see below for distribution information).  However, the library also comes with a built in testing tool that you can use to try out sending some data to the Metamarkets API right away from files that you pass to the tool.  Get started by downloading the tar file for the most recent distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.4/rdi-client-distribution-0.4-dist.tar.gz).
+The RdiClient artifacts are available on Metamarkets artifactory (see below for distribution information).  However, the library also comes with a built in testing tool that you can use to try out sending some data to the Metamarkets API right away from files that you pass to the tool.  Get started by downloading the tar file for the most recent distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.7/rdi-client-distribution-0.7-dist.tar.gz).
 
 Once you've downloaded the tar file, unpack it in the directory from which you plan to run the program.  Once that's done, you should see the following directories:
 {% highlight bash %}
@@ -42,7 +42,7 @@ When you're ready to start developing against the API, the Main method used in t
 
 To create the client, you'll need to pass an RdiClientConfig as shown in testing utility example.  Once your RdiClient is configured, use "send" to pass events to the client.  Passing events using "send" will post a new batch periodically when the events being buffered reach the max batch event count (flushCount) or the max batch size in bytes (flushBytes).  The method will return a future for every message sent before the POST actually finishes.  You should inspect the futures to determine whether or not the POST succeeded. The returned future may resolve into an exception if there are connection/network issues, or if the client is unable to POST to the server (e.g. if your rate limit is exceeded or your credentials are incorrect).  In the event of an exception when POSTing a batch, all futures for the events in that batch will resolve into an exception.  As demonstrated in the testing utility example, you can attach callbacks to the futures returned by "send".  Keep in mind that unless the you provide your own Executor, the callbacks will occur in I/O threads and you must make sure they execute quickly and do not block.  Calling "flush" will also force all pending events to be batched and POSTed.
 
-For more information on the core RdiClient API, please refer to the javadocs [here](https://metamx.github.io/rdi-client-java/static/apidocs/0.4/).
+For more information on the core RdiClient API, please refer to the javadocs [here](https://metamx.github.io/rdi-client-java/static/apidocs/0.7/).
 
 ## Data Format & Serialization
 
@@ -73,7 +73,7 @@ config.contentEncoding(RdiClientConfig.ContentEncoding.GZIP)
 {% endhighlight %}
 Otherwise it will default to "NONE".
 
-Because events will be compressed by the library, you should not compress them prior to calling the client.
+NOTE: Because events will be compressed by the library, you should not compress them prior to calling the client.
 
 ## Scaling
 
@@ -110,7 +110,7 @@ The current version is:
 <dependency>
   <groupId>com.metamx</groupId>
   <artifactId>rdi-client-core</artifactId>
-  <version>0.4</version>
+  <version>0.7</version>
 </dependency>
 {% endhighlight %}
 
@@ -125,7 +125,7 @@ Commits are done manually to support a "guaranteed delivery" approach.
 
 ## Downloading, Configuration & Usage
 
-To get started, you can download the latest distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.4/rdi-client-distribution-0.4-dist.tar.gz).
+To get started, you can download the latest distribution [here](https://metamx.artifactoryonline.com/metamx/pub-libs-releases-local/com/metamx/rdi-client-distribution/0.7/rdi-client-distribution-0.7-dist.tar.gz).
 
 Once you've downloaded the tar file, unpack it in the directory from which you plan to run the program.  Once that's done, you should see the following directories:
 {% highlight bash %}
@@ -173,7 +173,7 @@ Here is an example of the dependencies required for an implementation using Logb
 <dependency>
   <groupId>com.metamx</groupId>
   <artifactId>rdi-client</artifactId>
-  <version>0.0.4</version>
+  <version>0.0.7</version>
 </dependency>
 <dependency>
   <groupId>ch.qos.logback</groupId>
@@ -198,7 +198,7 @@ If you want to use use log4j, you can do so by including the following dependenc
 <dependency>
   <groupId>com.metamx</groupId>
   <artifactId>rdi-client</artifactId>
-  <version>0.0.4</version>
+  <version>0.0.7</version>
 </dependency>
 <dependency>
     <groupId>org.slf4j</groupId>
