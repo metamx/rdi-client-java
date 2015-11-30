@@ -24,6 +24,7 @@ import com.metamx.rdiclient.RdiClient;
 import com.metamx.rdiclient.RdiClientConfig;
 import com.metamx.rdiclient.RdiClients;
 import com.metamx.rdiclient.example.Examples;
+import com.vungle.rdiclient.kafka.SampleKafkaTranslator;
 import kafka.consumer.Consumer;
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.Whitelist;
@@ -46,6 +47,7 @@ public class Main
     final Properties rdiProperties = Examples.readProperties();
     final Properties kafkaProperties = new Properties();
     final String feed = Examples.getFeed(rdiProperties);
+    final float sampleRate = Examples.getSampleRate(rdiProperties);
     final ConsumerConnector consumerConnector;
     final KafkaRdiConsumer kafkaRdiConsumer;
     final RdiClient<byte[]> rdiClient;
@@ -71,7 +73,7 @@ public class Main
         new KafkaRdiConsumer(
             consumerConnector,
             new Whitelist(getKafkaTopic(rdiProperties)),
-            PassthroughKafkaTranslator.instance(),
+            new SampleKafkaTranslator(sampleRate),
             rdiClient,
             feed,
             getKafkaThreads(rdiProperties)

@@ -46,6 +46,12 @@
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka_2.10</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>com.metamx</groupId>
+      <artifactId>java-util</artifactId>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -56,6 +62,13 @@
       </plugin>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.metamx.rdiclient.kafka.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
       </plugin>
     </plugins>
   </build>
