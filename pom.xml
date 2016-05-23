@@ -76,7 +76,7 @@
       <dependency>
         <groupId>com.metamx</groupId>
         <artifactId>rad-tech-datatypes</artifactId>
-        <version>0.0.3</version>
+        <version>0.0.6</version>
       </dependency>
       <dependency>
         <groupId>com.metamx</groupId>
