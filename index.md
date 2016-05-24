@@ -9,7 +9,7 @@ layout: default
 
 The RdiClient for Java is a client library for posting event streams to Metamarkets' real-time data ingestion (RDI) API, which receives and processes event data in real-time.  The client comes with functionality to handle connecting to the HTTPS endpoint, authentication, serialization & batching events, connection pooling, HTTP transport, and error handling (w/ exponential-backoff retries).
 
-The RdiClient for Java is currently in beta and the current version is 0.7. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.4/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
+The RdiClient for Java is currently in beta and the current version is 0.7. [Click here](https://metamx.github.io/rdi-client-java/static/apidocs/0.7/) for the full javadocs.  You may also [view the source on Github](https://github.com/metamx/rdi-client-java/).
 
 ## Getting Started with the Client Library
 
