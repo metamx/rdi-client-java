@@ -19,20 +19,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>rdi-client-distribution</artifactId>
-  <version>0.9-SNAPSHOT</version>
+  <version>0.9</version>
   <name>rdi-client-distribution</name>
 
   <scm>
     <connection>scm:git:ssh://git@github.com/metamx/rdi-client.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metamx/rdi-client.git</developerConnection>
     <url>http://www.github.com/metamx/rdi-client</url>
-    <tag>HEAD</tag>
+    <tag>rdi-client-0.9</tag>
   </scm>
 
   <parent>
     <groupId>com.metamx</groupId>
     <artifactId>rdi-client</artifactId>
-    <version>0.9-SNAPSHOT</version>
+    <version>0.9</version>
   </parent>
 
   <dependencies>
