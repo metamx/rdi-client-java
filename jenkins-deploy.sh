@@ -10,5 +10,5 @@ DIST_TAR=${ARTIFACT}-distribution-${TAG}-dist.tar.gz
 
 S3_PATH=${S3_BUCKET}/${ARTIFACT}/${TAG}/
 
-s3cmd -r put target/site ${S3_PATH}
-s3cmd put distribution/target/${DIST_TAR} ${S3_PATH}
+aws s3 mv target/site ${S3_PATH} --recursive --acl bucket-owner-full-control
+aws s3 mv distribution/target/${DIST_TAR} ${S3_PATH} --recursive --acl bucket-owner-full-control
