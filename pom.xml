@@ -198,23 +198,23 @@
             </archive>
           </configuration>
         </plugin>
-        <!--<plugin>-->
-        <!--  <artifactId>maven-javadoc-plugin</artifactId>-->
-        <!--  <version>2.10.1</version>-->
-        <!--  <configuration>-->
-            <!--<excludePackageNames>com.metamx.rdiclient.kafka</excludePackageNames>-->
-        <!--  </configuration>-->
-        <!--</plugin>-->
-         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
+        <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
           <version>2.10.1</version>
           <configuration>
-          <!-- jdk8 started linting javadocs by default; ours are not fully compliant -->
-            <additionalparam>-Xdoclint:none</additionalparam>
             <excludePackageNames>com.metamx.rdiclient.kafka</excludePackageNames>
           </configuration>
         </plugin>
+        <!-- <plugin>-->
+        <!--  <groupId>org.apache.maven.plugins</groupId>-->
+        <!--  <artifactId>maven-javadoc-plugin</artifactId>-->
+        <!--  <version>2.10.1</version>-->
+        <!--  <configuration>-->
+          <!-- jdk8 started linting javadocs by default; ours are not fully compliant -->
+        <!--    <additionalparam>-Xdoclint:none</additionalparam>-->
+        <!--    <excludePackageNames>com.metamx.rdiclient.kafka</excludePackageNames>-->
+        <!--  </configuration>-->
+        <!--</plugin>-->
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
           <version>2.5</version>
