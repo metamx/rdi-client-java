@@ -211,7 +211,7 @@
           <version>2.10.1</version>
           <configuration>
           <!-- jdk8 started linting javadocs by default; ours are not fully compliant -->
-            additionalparam>-Xdoclint:none</additionalparam>
+            <additionalparam>-Xdoclint:none</additionalparam>
             <excludePackageNames>com.metamx.rdiclient.kafka</excludePackageNames>
           </configuration>
         </plugin>
