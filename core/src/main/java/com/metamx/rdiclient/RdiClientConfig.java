@@ -37,6 +37,7 @@ public class RdiClientConfig
   private final int flushBytes;
   private final long postTimeoutMillis;
   private final int maxConnectionCount;
+  private final boolean retryOnBadRequest;
 
   public enum ContentEncoding {
     NONE, GZIP
@@ -51,7 +52,8 @@ public class RdiClientConfig
       final int flushCount,
       final int flushBytes,
       final long postTimeoutMillis,
-      final int maxConnectionCount
+      final int maxConnectionCount,
+      final boolean retryOnBadRequest
   )
   {
     this.rdiUrl = Preconditions.checkNotNull(rdiUrl, "rdiUrl");
@@ -63,6 +65,7 @@ public class RdiClientConfig
     this.flushBytes = flushBytes;
     this.postTimeoutMillis = postTimeoutMillis;
     this.maxConnectionCount = maxConnectionCount;
+    this.retryOnBadRequest = retryOnBadRequest;
   }
 
   /**
@@ -154,6 +157,16 @@ public class RdiClientConfig
     return maxConnectionCount;
   }
 
+  /**
+   * Whether the client should retry on HTTP 400 errors returned by the API.
+   * <p />
+   * The default is false.
+   */
+  public boolean isRetryOnBadRequest()
+  {
+    return retryOnBadRequest;
+  }
+
   @Override
   public String toString()
   {
@@ -167,6 +180,7 @@ public class RdiClientConfig
            ", flushBytes=" + flushBytes +
            ", postTimeoutMillis=" + postTimeoutMillis +
            ", maxConnectionCount=" + maxConnectionCount +
+           ", retryOnBadRequest=" + retryOnBadRequest +
            '}';
   }
 
@@ -182,6 +196,7 @@ public class RdiClientConfig
    *   <li><b>rdi.connection.count</b>: {@link com.metamx.rdiclient.RdiClientConfig#getMaxConnectionCount}</li>
    *   <li><b>rdi.connection.timeout</b>: {@link com.metamx.rdiclient.RdiClientConfig#getPostTimeoutMillis}</li>
    *   <li><b>rdi.connection.retries</b>: {@link com.metamx.rdiclient.RdiClientConfig#getMaxRetries}</li>
+   *   <li><b>rdi.connection.retryOnBadRequest</b>: {@link com.metamx.rdiclient.RdiClientConfig#isRetryOnBadRequest()}</li>
    *   <li><b>rdi.content.encoding</b>: {@link com.metamx.rdiclient.RdiClientConfig#getContentEncoding}</li>
    * </ul>
    */
@@ -213,6 +228,10 @@ public class RdiClientConfig
       builder.maxRetries(Integer.parseInt(props.getProperty("rdi.connection.retries")));
     }
 
+    if (props.containsKey("rdi.connection.retryOnBadRequest")) {
+      builder.setRetryOnBadRequest(Boolean.parseBoolean(props.getProperty("rdi.connection.retryOnBadRequest")));
+    }
+
     if (props.containsKey("rdi.content.encoding")) {
       builder.contentEncoding(ContentEncoding.valueOf(props.getProperty("rdi.content.encoding").toUpperCase()));
     }
@@ -239,6 +258,7 @@ public class RdiClientConfig
     private int flushBytes = 921600;
     private long postTimeoutMillis = 30 * 1000;
     private int maxConnectionCount = 1;
+    private boolean retryOnBadRequest = false;
 
     public Builder() {}
 
@@ -296,6 +316,12 @@ public class RdiClientConfig
       return this;
     }
 
+    public Builder setRetryOnBadRequest(final boolean retryOnBadRequest)
+    {
+      this.retryOnBadRequest = retryOnBadRequest;
+      return this;
+    }
+
     public RdiClientConfig build()
     {
       return new RdiClientConfig(
@@ -307,7 +333,8 @@ public class RdiClientConfig
           flushCount,
           flushBytes,
           postTimeoutMillis,
-          maxConnectionCount
+          maxConnectionCount,
+          retryOnBadRequest
       );
     }
   }

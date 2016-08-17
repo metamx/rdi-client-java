@@ -426,7 +426,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
               shouldRetry = true;
             } else if (e instanceof RdiHttpResponseException) {
               final int statusCode = ((RdiHttpResponseException) e).getStatusCode();
-              shouldRetry = statusCode / 100 == 5 || (statusCode / 100 == 4 && statusCode != 400);
+              shouldRetry = statusCode / 100 == 5 || (statusCode / 100 == 4 && (statusCode != 400 || config.isRetryOnBadRequest()));
             } else {
               shouldRetry = false;
             }
