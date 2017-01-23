@@ -27,6 +27,7 @@ public class Examples
 {
   private static final String PROPS_LOCATION = "conf/rdi.properties";
   private static final String FEED_PROPERTY = "rdi.tool.feed";
+  private static final String SAMPLE_RATE_PROPERTY = "rdi.sample.rate";
 
   public static Properties readProperties() throws IOException
   {
@@ -40,5 +41,14 @@ public class Examples
       throw new IAE("Property '%s' (destination feed) is required", FEED_PROPERTY);
     }
     return feed;
+  }
+
+  public static float getSampleRate(final Properties props)
+  {
+    final String sampleRate = props.getProperty(SAMPLE_RATE_PROPERTY);
+    if (sampleRate == null) {
+      return 1;
+    }
+    return Float.parseFloat(sampleRate);
   }
 }
