@@ -390,7 +390,7 @@ public class RdiClientImpl<T> implements RdiClient<T>
   )
   {
     final SettableFuture<HttpResponseStatus> retVal = SettableFuture.create();
-    final ListenableFuture<HttpResponseStatus> response = Futures.transform(
+    final ListenableFuture<HttpResponseStatus> response = Futures.transformAsync(
         httpClient.go(request, new StatusResponseHandler(Charsets.UTF_8)),
         new AsyncFunction<StatusResponseHolder, HttpResponseStatus>()
         {

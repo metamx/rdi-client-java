@@ -93,6 +93,11 @@
         <artifactId>validation-api</artifactId>
         <version>1.0.0.GA</version>
       </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>25.0-jre</version>
+      </dependency>
 
       <!-- Jackson -->
       <dependency>
